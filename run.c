@@ -207,6 +207,7 @@ void matmul(float* xout, float* x, float* w, int n, int d) {
 
 void transformer(int token, int pos, Config* p, RunState* s, TransformerWeights* w) {
 
+    printf("inside transformer\n");
     // a few convenience variables
     float *x = s->x;
     int dim = p->dim;
@@ -223,6 +224,7 @@ void transformer(int token, int pos, Config* p, RunState* s, TransformerWeights*
 
     // forward all the layers
     for(int l = 0; l < p->n_layers; l++) {
+    	printf("forward layer %s", l);
 
         // attention rmsnorm
         rmsnorm(s->xb, x, w->rms_att_weight + l*dim, dim);
@@ -298,6 +300,7 @@ void transformer(int token, int pos, Config* p, RunState* s, TransformerWeights*
                 }
             }
         }
+    	printf("multihead attention");
 
         // final matmul to get the output of the attention
         matmul(s->xb2, s->xb, w->wo + l*dim*dim, dim, dim);
@@ -373,7 +376,7 @@ void bpe_encode(char *text, char **vocab, float *vocab_scores, int vocab_size, u
 
         for (int i=0; i < (*n_tokens-1); i++) {
             // check if we can merge the pair (tokens[i], tokens[i+1])
-            sprintf(str_buffer, "%s%s", vocab[tokens[i]], vocab[tokens[i+1]]);
+            printf(str_buffer, "%s%s", vocab[tokens[i]], vocab[tokens[i+1]]);
             int id = str_lookup(str_buffer, vocab, vocab_size);
             if (id != -1 && vocab_scores[id] > best_score) {
                 // this merge pair exists in vocab! record its score and position
@@ -543,7 +546,7 @@ int main(int argc, char *argv[]) {
     int next;        // will store the next token in the sequence
     int token = 1;   // init with token 1 (=BOS), as done in Llama-2 sentencepiece tokenizer
     int pos = 0;     // position in the sequence
-    printf("<s>\n"); // explicit print the initial BOS token for stylistic symmetry reasons
+    printf("<helpme>\n"); // explicit print the initial BOS token for stylistic symmetry reasons
     while (pos < steps) {
 
         // forward the transformer to get logits for the next token
@@ -566,11 +569,13 @@ int main(int argc, char *argv[]) {
                 next = sample(state.logits, config.vocab_size);
             }
         }
+	printf("post output transformer");
 
         // following BOS token (1), sentencepiece decoder strips any leading whitespace (see PR #89)
         char *token_str = (token == 1 && vocab[next][0] == ' ') ? vocab[next]+1 : vocab[next];
         printf("%s", token_str);
         fflush(stdout);
+	printf("decoder transformer");
 
         // advance forward
         token = next;
